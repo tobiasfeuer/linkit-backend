@@ -1,32 +1,48 @@
-node_modules
+# =========================
+# Dependencias
+# =========================
+node_modules/
 
-node_modules
-
+# =========================
+# Archivos de entorno
+# =========================
 .env
+.env.*
 
+# =========================
+# Archivos sensibles (claves / tokens)
+# =========================
 admin-firebase.json
-
 server/src/admin-firebase.json
-
 server/src/users/authentication/admin_key.json
-
 server/token.json
-
 credentials.json
 
-server/src/admin-firebase.json:1
-
-server/src/users/authentication/admin_key.json:1
-
-server/token.json:1
-
+# =========================
+# Archivos JSON permitidos (se "des-ignoran")
+# =========================
+!package.json
+!package-lock.json
+!tsconfig.json
 !countries.json
 !stack.json
 !techStack.json
-!package-lock.json
-!package.json
-!tsconfig.json
 
+# =========================
+# Logs
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
+# =========================
+# Sistema operativo
+# =========================
+.DS_Store
+Thumbs.db
 
+# =========================
+# Regla general
+# (Ignora cualquier .json que no esté explícitamente permitido arriba)
+# =========================
 *.json
