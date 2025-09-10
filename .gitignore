@@ -24,9 +24,9 @@ credentials.json
 !package.json
 !package-lock.json
 !tsconfig.json
-!countries.json
-!stack.json
-!techStack.json
+!src/resources/infrastructure/schema/countries.json
+!src/resources/infrastructure/schema/stack.json
+!src/resources/infrastructure/schema/techStack.json
 
 # =========================
 # Logs
