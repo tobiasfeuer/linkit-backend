@@ -1,12 +1,11 @@
 import * as fs from 'fs/promises'
-import * as path from 'path'
 import { authenticate } from '@google-cloud/local-auth'
 import { google } from 'googleapis'
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-const TOKEN_PATH = path.join(process.cwd(), 'token.json')
+const TOKEN_PATH = '/etc/secrets/token.json'
 
-const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json')
+const CREDENTIALS_PATH = '/etc/secrets/credentials.json'
 
 export async function authorize (): Promise<any> {
   let client = await loadSavedCredentialsIfExist()
