@@ -22,6 +22,7 @@ export const syncAirtableController = async (req: Request, res: Response) => {
     result = await jdRepo.createJD(jdCreate);
     }
 
+    res.setHeader("Connection", "close");
     res.status(200).json({ message: 'JD synced', jd: result });
   } catch (error: any) {
     console.error('Error syncing JD from Airtable:', error);
