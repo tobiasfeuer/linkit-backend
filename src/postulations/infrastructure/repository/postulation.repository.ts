@@ -15,12 +15,89 @@ export class MongoPostulationRepository implements PostulationRepository {
     this.mailNodeMailerProvider = mailNodeMailerProvider
   }
 
-  async createPostulation (postulation: postulation, userId: string): Promise<UserEntity> {
+  async createPostulation (postulation: postulation, userId?: string): Promise<UserEntity | null> {
     try {
       await validatePostulation(postulation, userId)
       postulation.created = new Date()
       const jd = await Jd.find({ code: postulation.code })
-      const user = await User.findById(userId) as UserEntity
+      if (jd.length === 0) {
+        throw new ServerError('Unable to find JD under the code provided', 'No se encontro JD con ese codigo', 406)
+      }
+
+      const user = userId ? await User.findById(userId) as UserEntity : null
+      if (userId && !user) {
+        throw new ServerError('Unauthorized', 'No autorizado', 401)
+      }
+
+      // Manejar recruiterSlug: buscar el recruiter y obtener su Name
+      let recruiterName: string | undefined = postulation.recruiter
+
+      if (postulation.recruiterSlug) {
+        try {
+          // Buscar recruiter por URL Slug en la tabla de Recruiters
+          const possibleTableNames = [
+            'LinkIT - Recruiters',
+            'Recruiters',
+            'Payroll',
+            'LinkIT - Payroll'
+          ]
+
+          let recruiterFound = null
+          for (const tableName of possibleTableNames) {
+            try {
+              const recruiterResult = await base(tableName)
+                .select({
+                  filterByFormula: `{URL Slug} = "${postulation.recruiterSlug}"`,
+                  maxRecords: 1
+                })
+                .firstPage()
+
+              if (recruiterResult.length > 0) {
+                recruiterFound = recruiterResult[0]
+                break
+              }
+            } catch (error) {
+              // Tabla no encontrada, continuar con la siguiente
+              continue
+            }
+          }
+
+          if (!recruiterFound) {
+            throw new ServerError(
+              'Invalid recruiterSlug: recruiter not found',
+              'recruiterSlug no válido: recruiter no encontrado',
+              400
+            )
+          }
+
+          const recruiterFields = recruiterFound.fields
+
+          // Verificar que el recruiter esté activo
+          const status = recruiterFields.Status as string
+          const active = status === 'Active' || status === 'active' || recruiterFields.Active === true
+
+          if (!active) {
+            throw new ServerError(
+              'Invalid recruiterSlug: recruiter is not active',
+              'recruiterSlug no válido: el recruiter no está activo',
+              400
+            )
+          }
+
+          // Obtener el Name del recruiter
+          recruiterName = recruiterFields.Name as string
+        } catch (error: any) {
+          if (error instanceof ServerError) {
+            throw error
+          }
+          throw new ServerError(
+            'Error validating recruiterSlug',
+            'Error al validar recruiterSlug',
+            400
+          )
+        }
+      }
+
       await base('LinkIT - Candidate application').create([
         {
           fields: {
@@ -35,20 +112,20 @@ export class MongoPostulationRepository implements PostulationRepository {
             Nombre: postulation.firstName,
             Apellido: postulation.lastName,
             'What would be your area of expertise?': postulation.techStack,
-            Recruiter: postulation.recruiter ? postulation.recruiter : undefined,
+            Recruiter: recruiterName || undefined,
             'CV': postulation.cv,
             'Rol al que aplica': postulation.code
           }
         }
       ])
-      await User.findByIdAndUpdate(userId, { $push: { postulations: postulation.code } }, { new: true })
-      if (jd.length) {
+
+      if (userId && user) {
+        await User.findByIdAndUpdate(userId, { $push: { postulations: postulation.code } }, { new: true })
         await this.mailNodeMailerProvider.sendEmail(postulationMailCreate(user as MongoUser, jd[0] as MongoJd))
-      } else {
-        throw new ServerError('Unable to find JD under the code provided', 'No se encontro JD con ese codigo', 406)
+        return user
       }
   
-      return user
+      return null
     } catch (error: any) {
       if (error instanceof ServerError) {
         throw error

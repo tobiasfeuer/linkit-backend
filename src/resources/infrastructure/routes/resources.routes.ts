@@ -7,6 +7,7 @@ import clientsFollowUpRoute from './companyJDs.routes'
 import candidatePrsentationRoute from './activePostul.routes'
 import countriesRouter from './countries.routes'
 import techStackRouter from './techStack.routes'
+import formConfigRouter from './form-config.routes'
 
 const resourcesRoute = Router()
 
@@ -18,5 +19,6 @@ resourcesRoute.use('/activePostul', candidatePrsentationRoute)
 resourcesRoute.use('/countries', countriesRouter)
 resourcesRoute.use('/techStack', techStackRouter)
 resourcesRoute.use('/newsletter', newsLetterRouter)
+resourcesRoute.use('/form-config', formConfigRouter)
 
 export default resourcesRoute

@@ -13,6 +13,7 @@ import OKRRoute from './posts/infrastructure/routes/OKRs.routes'
 import resourcesRoute from './resources/infrastructure/routes/resources.routes'
 import { authValidator, langValidator } from './middlewares'
 import postulationRoute from './postulations/infrastructure/routes/postulation.route'
+import recruitersRoute from './recruiters/infrastructure/routes/recruiters.routes'
 import { generateSitemap } from './Utils/sitemap'
 import { generateJdUrlsExcel } from './Utils/jds-urls'
 import morgan from 'morgan'
@@ -35,6 +36,7 @@ app.get('/jdsurls', generateJdUrlsExcel);
 app.use(langValidator)
 app.use('/resources', resourcesRoute)
 app.use('/postulations', postulationRoute)
+app.use('/recruiters', recruitersRoute)
 app.use('/auth', authRoute)
 app.use('/posts', postRoute)
 

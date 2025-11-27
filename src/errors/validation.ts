@@ -208,12 +208,14 @@ export async function permValidator (id: string, method: string, entity: string)
 
 //* POSTULATIONS VALIDATOR
 
-export async function validatePostulation (postulation: postulation, userid: string): Promise<void> {
-  if (!userid) throw new ServerError('No ID of applicant found', 'El ID del aplicante es necesario', 406)
-  objectIDValidator(userid, 'user creating application', 'usuario aplicando')
+export async function validatePostulation (postulation: postulation, userid?: string): Promise<void> {
   validateProps(postulation)
   await validatePostulationTypes(postulation)
-  await validateCandidate(postulation, userid) //! Si no se han creado usuarios comentar este codigo para que deje crear testing data.
+
+  if (userid) {
+    objectIDValidator(userid, 'user creating application', 'usuario aplicando')
+    await validateCandidate(postulation, userid) //! Si no se han creado usuarios comentar este codigo para que deje crear testing data.
+  }
 }
 
 function validateProps (postulation: postulation): void {
