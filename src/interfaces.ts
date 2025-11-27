@@ -23,11 +23,25 @@ export interface postulation {
   firstName: string
   lastName: string
   recruiter?: string
+  recruiterSlug?: string
 }
 
 export interface cv {
   fileName?: string | null | undefined
   cloudinaryId?: string | null | undefined
+}
+
+export interface RecruiterResponse {
+  id: string
+  name: string
+  lastName: string
+  urlSlug: string
+  email: string
+  photoUrl: string
+  active: boolean
+  formUrl: string
+  recruitmentRoleCode?: string | null
+  recruitmentRoleName?: string | null
 }
 
 export interface blogHeader {
