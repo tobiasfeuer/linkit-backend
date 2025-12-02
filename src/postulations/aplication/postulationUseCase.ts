@@ -10,8 +10,8 @@ export class PostulationUseCase {
     return postulation
   }
 
-  public createPostulation = async (postulation: postulation, userId?: string): Promise<UserEntity | null> => {
-    const postulationCreated = await this.postulationRepo.createPostulation(postulation, userId)
+  public createPostulation = async (postulation: postulation | (postulation & Record<string, any>), userId?: string): Promise<UserEntity | null> => {
+    const postulationCreated = await this.postulationRepo.createPostulation(postulation as any, userId)
     return postulationCreated
   }
 }

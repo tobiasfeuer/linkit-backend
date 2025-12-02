@@ -16,7 +16,7 @@ export class PostulationController {
   public postController: RequestHandler = async (req, res) => {
     try {
       const userId = typeof req.query.user === 'string' ? req.query.user : undefined
-      const result = await this.postulationUseCase.createPostulation(req.body, userId)
+      const result = await this.postulationUseCase.createPostulation(req.body as any, userId)
       if (result !== null) {
         return res.status(201).json(result)
       }
