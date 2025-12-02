@@ -14,9 +14,9 @@ export class MongoPostulationRepository implements PostulationRepository {
   constructor (private readonly mailNodeMailerProvider: MailNodeMailerProvider) {
     this.mailNodeMailerProvider = mailNodeMailerProvider
   }
-
-  async createPostulation (postulation: postulation, userId?: string): Promise<UserEntity | null> {
+  async createPostulation (postulation: postulation | (postulation & Record<string, any>), userId?: string): Promise<UserEntity | null> {
     try {
+      const postulationWithExtras = postulation as any
       await validatePostulation(postulation, userId)
       postulation.created = new Date()
       const jd = await Jd.find({ code: postulation.code })
@@ -28,13 +28,10 @@ export class MongoPostulationRepository implements PostulationRepository {
       if (userId && !user) {
         throw new ServerError('Unauthorized', 'No autorizado', 401)
       }
-
-      // Manejar recruiterSlug: buscar el recruiter y obtener su Name
       let recruiterName: string | undefined = postulation.recruiter
 
       if (postulation.recruiterSlug) {
         try {
-          // Buscar recruiter por URL Slug en la tabla de Recruiters
           const possibleTableNames = [
             'LinkIT - Recruiters',
             'Recruiters',
@@ -57,7 +54,6 @@ export class MongoPostulationRepository implements PostulationRepository {
                 break
               }
             } catch (error) {
-              // Tabla no encontrada, continuar con la siguiente
               continue
             }
           }
@@ -71,8 +67,6 @@ export class MongoPostulationRepository implements PostulationRepository {
           }
 
           const recruiterFields = recruiterFound.fields
-
-          // Verificar que el recruiter esté activo
           const status = recruiterFields.Status as string
           const active = status === 'Active' || status === 'active' || recruiterFields.Active === true
 
@@ -83,8 +77,6 @@ export class MongoPostulationRepository implements PostulationRepository {
               400
             )
           }
-
-          // Obtener el Name del recruiter
           recruiterName = recruiterFields.Name as string
         } catch (error: any) {
           if (error instanceof ServerError) {
@@ -97,25 +89,82 @@ export class MongoPostulationRepository implements PostulationRepository {
           )
         }
       }
+      const knownFields: Record<string, any> = {
+        'Candidate Stack + PM tools': postulation.stack,
+        LinkedIn: postulation.linkedin,
+        'Salary expectation (USD)': postulation.salary,
+        Country: postulation.country,
+        'English Level': postulation.english,
+        'Why Change': postulation.reason,
+        'Candidate Email': postulation.email,
+        'When to start availability': postulation.availability,
+        Nombre: postulation.firstName,
+        Apellido: postulation.lastName,
+        'What would be your area of expertise?': postulation.techStack,
+        Recruiter: recruiterName || undefined,
+        'CV': postulation.cv,
+        'Rol al que aplica': postulation.code
+      }
+
+      const knownPostulationFields = [
+        'cv', 'code', 'techStack', 'stack', 'email', 'country', 'linkedin',
+        'salary', 'english', 'reason', 'availability', 'created', 'firstName',
+        'lastName', 'recruiter', 'recruiterSlug'
+      ]
+
+      const additionalFields: Record<string, any> = {}
+      
+      for (const key in postulationWithExtras) {
+        if (!knownPostulationFields.includes(key)) {
+          const value = postulationWithExtras[key]
+          
+          if (value !== undefined && value !== null) {
+            if (typeof value === 'string' && value.trim() !== '') {
+              additionalFields[key] = value
+            } else if (typeof value !== 'string') {
+              additionalFields[key] = value
+            }
+          }
+        }
+      }
+
+      const allFields = {
+        ...knownFields,
+        ...additionalFields
+      }
+
+      const cleanedFields: Record<string, any> = {}
+      const phoneFields = ['Phone', 'phone', 'telefono', 'Telefono']
+      const phoneFieldsProcessed: string[] = []
+      
+      for (const key in allFields) {
+        const value = allFields[key]
+        const isPhoneField = phoneFields.some(phoneField => 
+          key.toLowerCase() === phoneField.toLowerCase()
+        )
+        
+        if (isPhoneField && phoneFieldsProcessed.length > 0) {
+          continue
+        }
+        
+        if (value !== undefined && value !== null) {
+          if (typeof value === 'string' && value.trim() !== '') {
+            cleanedFields[key] = value
+            if (isPhoneField) {
+              phoneFieldsProcessed.push(key)
+            }
+          } else if (typeof value !== 'string') {
+            cleanedFields[key] = value
+            if (isPhoneField) {
+              phoneFieldsProcessed.push(key)
+            }
+          }
+        }
+      }
 
       await base('LinkIT - Candidate application').create([
         {
-          fields: {
-            'Candidate Stack + PM tools': postulation.stack,
-            LinkedIn: postulation.linkedin,
-            'Salary expectation (USD)': postulation.salary,
-            Country: postulation.country,
-            'English Level': postulation.english,
-            'Why Change': postulation.reason,
-            'Candidate Email': postulation.email,
-            'When to start availability': postulation.availability,
-            Nombre: postulation.firstName,
-            Apellido: postulation.lastName,
-            'What would be your area of expertise?': postulation.techStack,
-            Recruiter: recruiterName || undefined,
-            'CV': postulation.cv,
-            'Rol al que aplica': postulation.code
-          }
+          fields: cleanedFields
         }
       ])
 
@@ -130,7 +179,8 @@ export class MongoPostulationRepository implements PostulationRepository {
       if (error instanceof ServerError) {
         throw error
       } else {
-        throw new UncatchedError(error.message, 'creating postulation', 'crear postulacion')
+        const errorMessage = error?.error?.message || error?.message || 'Error desconocido al crear postulación'
+        throw new UncatchedError(errorMessage, 'creating postulation', 'crear postulacion')
       }
     }
   }
