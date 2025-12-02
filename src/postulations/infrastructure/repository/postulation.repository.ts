@@ -14,7 +14,6 @@ export class MongoPostulationRepository implements PostulationRepository {
   constructor (private readonly mailNodeMailerProvider: MailNodeMailerProvider) {
     this.mailNodeMailerProvider = mailNodeMailerProvider
   }
-
   async createPostulation (postulation: postulation | (postulation & Record<string, any>), userId?: string): Promise<UserEntity | null> {
     try {
       const postulationWithExtras = postulation as any
@@ -29,7 +28,6 @@ export class MongoPostulationRepository implements PostulationRepository {
       if (userId && !user) {
         throw new ServerError('Unauthorized', 'No autorizado', 401)
       }
-
       let recruiterName: string | undefined = postulation.recruiter
 
       if (postulation.recruiterSlug) {
@@ -79,7 +77,6 @@ export class MongoPostulationRepository implements PostulationRepository {
               400
             )
           }
-
           recruiterName = recruiterFields.Name as string
         } catch (error: any) {
           if (error instanceof ServerError) {
@@ -92,7 +89,6 @@ export class MongoPostulationRepository implements PostulationRepository {
           )
         }
       }
-
       const knownFields: Record<string, any> = {
         'Candidate Stack + PM tools': postulation.stack,
         LinkedIn: postulation.linkedin,
