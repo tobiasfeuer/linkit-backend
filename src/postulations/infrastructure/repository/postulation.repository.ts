@@ -179,9 +179,62 @@ export class MongoPostulationRepository implements PostulationRepository {
       if (error instanceof ServerError) {
         throw error
       } else {
-        const errorMessage = error?.error?.message || error?.message || 'Error desconocido al crear postulación'
-        throw new UncatchedError(errorMessage, 'creating postulation', 'crear postulacion')
+        const airtableError = this.parseAirtableError(error)
+        throw new UncatchedError(airtableError.message, airtableError.en, airtableError.es)
       }
+    }
+  }
+
+  private parseAirtableError(error: any): { message: string; en: string; es: string } {
+    const errorMessage = error?.error?.message || error?.message || ''
+    const errorType = error?.error?.type || ''
+    const errorDetails = error?.error?.details || {}
+    
+    if (errorType === 'INVALID_VALUE_FOR_COLUMN' || errorMessage.includes('no acepta los valores indicados') || errorMessage.includes('does not accept the indicated values')) {
+      const fieldName = errorDetails?.fieldName || 'campo'
+      return {
+        message: `Invalid value for field: ${fieldName}`,
+        en: 'One or more fields contain invalid values. Please check the form and try again.',
+        es: 'Uno o más campos contienen valores inválidos. Por favor revisa el formulario e intenta nuevamente.'
+      }
+    }
+    
+    if (errorType === 'UNKNOWN_FIELD' || errorMessage.includes('Unknown field') || errorMessage.includes('Campo desconocido')) {
+      return {
+        message: 'Unknown field in form',
+        en: 'There was an error with the form configuration. Please try again later or contact support.',
+        es: 'Hubo un error con la configuración del formulario. Por favor intenta más tarde o contacta con soporte.'
+      }
+    }
+    
+    if (errorMessage.includes('duplicate') || errorMessage.includes('duplicado')) {
+      return {
+        message: 'Duplicate application',
+        en: 'This application may have already been submitted. Please check your email or try again later.',
+        es: 'Esta postulación ya puede haber sido enviada. Por favor revisa tu correo o intenta más tarde.'
+      }
+    }
+    
+    if (errorMessage.includes('required') || errorMessage.includes('requerido')) {
+      return {
+        message: 'Missing required fields',
+        en: 'Please fill in all required fields before submitting.',
+        es: 'Por favor completa todos los campos requeridos antes de enviar.'
+      }
+    }
+    
+    if (errorMessage.includes('format') || errorMessage.includes('formato')) {
+      return {
+        message: 'Invalid field format',
+        en: 'One or more fields have an invalid format. Please check the form and correct any errors.',
+        es: 'Uno o más campos tienen un formato inválido. Por favor revisa el formulario y corrige los errores.'
+      }
+    }
+    
+    return {
+      message: errorMessage || 'Unknown error occurred',
+      en: 'An error occurred while submitting your application. Please try again later or contact support if the problem persists.',
+      es: 'Ocurrió un error al enviar tu postulación. Por favor intenta más tarde o contacta con soporte si el problema persiste.'
     }
   }
 
