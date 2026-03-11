@@ -61,7 +61,7 @@ contactUsRoute.post('/form', formLimiter, async (req, res): Promise<any> => {
         Email: formData.correo,
         'Phone Number': formData.telefono,
         Pais: formData.pais,
-        'Rol buscado': formData.perfil,
+        Mensaje: formData.perfil,
       }
     }
 
