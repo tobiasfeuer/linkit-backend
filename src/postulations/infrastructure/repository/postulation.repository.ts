@@ -10,9 +10,83 @@ import { postulationMailCreate } from '../../../users/authentication/Infrastruct
 import Jd from '../../../posts/infrastructure/schema/Jd'
 import { type MongoJd } from '../../../posts/domain/jd/jd.entity'
 
+const FORMS_VALUES_TABLE = 'Forms Values'
+const COUNTRY_LINK_FIELD = 'Países (No borrar)'
+const COUNTRY_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+let countriesByNormalizedLabel: Map<string, string> = new Map()
+let countriesCacheLoadedAt = 0
+
+const normalizeCountryKey = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+const splitAliases = (value: unknown): string[] => {
+  if (typeof value !== 'string') return []
+  return value
+    .split(/[|,;]/)
+    .map(alias => alias.trim())
+    .filter(Boolean)
+}
+
 export class MongoPostulationRepository implements PostulationRepository {
   constructor (private readonly mailNodeMailerProvider: MailNodeMailerProvider) {
     this.mailNodeMailerProvider = mailNodeMailerProvider
+  }
+
+  private async loadCountriesMap (): Promise<Map<string, string>> {
+    const now = Date.now()
+    if (
+      countriesByNormalizedLabel.size > 0 &&
+      now - countriesCacheLoadedAt < COUNTRY_CACHE_TTL_MS
+    ) {
+      return countriesByNormalizedLabel
+    }
+
+    const records = await base(FORMS_VALUES_TABLE).select().all()
+    const nextMap = new Map<string, string>()
+
+    for (const record of records) {
+      const fields = record.fields as Record<string, unknown>
+      const isActiveField = fields.isActive
+      const isInactive =
+        isActiveField === false ||
+        isActiveField === 0 ||
+        isActiveField === '0' ||
+        isActiveField === 'false' ||
+        isActiveField === 'FALSE'
+
+      if (isInactive) continue
+
+      const labels = [
+        fields.optionLabelEs,
+        fields.optionLabelEn,
+        fields.name,
+        ...splitAliases(fields.legacyAliases)
+      ]
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim())
+        .filter(Boolean)
+
+      for (const label of labels) {
+        nextMap.set(normalizeCountryKey(label), record.id)
+      }
+    }
+
+    countriesByNormalizedLabel = nextMap
+    countriesCacheLoadedAt = now
+    return countriesByNormalizedLabel
+  }
+
+  private async resolveCountryRecordId (countryValue?: string): Promise<string | undefined> {
+    if (!countryValue || !countryValue.trim()) return undefined
+
+    const countriesMap = await this.loadCountriesMap()
+    const recordId = countriesMap.get(normalizeCountryKey(countryValue))
+    return recordId
   }
 
   async createPostulation (postulation: postulation | (postulation & Record<string, any>), userId?: string): Promise<UserEntity | null> {
@@ -93,11 +167,20 @@ export class MongoPostulationRepository implements PostulationRepository {
         }
       }
 
+      const countryRecordId = await this.resolveCountryRecordId(postulation.country)
+      if (postulation.country && !countryRecordId) {
+        throw new ServerError(
+          `Country "${postulation.country}" not found in ${FORMS_VALUES_TABLE}`,
+          `No se encontró el país "${postulation.country}" en ${FORMS_VALUES_TABLE}`,
+          406
+        )
+      }
+
       const knownFields: Record<string, any> = {
         'Candidate Stack + PM tools': postulation.stack,
         LinkedIn: postulation.linkedin,
         'Salary expectation (USD)': postulation.salary,
-        Country: postulation.country,
+        [COUNTRY_LINK_FIELD]: countryRecordId ? [countryRecordId] : undefined,
         'English Level': postulation.english,
         'Why Change': postulation.reason,
         'Candidate Email': postulation.email,
@@ -116,10 +199,30 @@ export class MongoPostulationRepository implements PostulationRepository {
         'lastName', 'recruiter', 'recruiterSlug'
       ]
 
+      // Campos de sistema/computed que pueden venir desde vistas/config y no deben
+      // enviarse al create de Airtable.
+      const ignoredComputedOrSystemFields = new Set([
+        'optiongroup',
+        'optionlabeles',
+        'optionlabelen',
+        'legacyaliases',
+        'isactive',
+        'sortorder',
+        'createdtime',
+        'lastmodified',
+        'lastmodifiedtime',
+        'paises (no borrar)',
+        'países (no borrar)'
+      ])
+
       const additionalFields: Record<string, any> = {}
       
       for (const key in postulationWithExtras) {
-        if (!knownPostulationFields.includes(key)) {
+        const normalizedKey = key.toLowerCase().trim()
+        if (
+          !knownPostulationFields.includes(key) &&
+          !ignoredComputedOrSystemFields.has(normalizedKey)
+        ) {
           const value = postulationWithExtras[key]
           
           if (value !== undefined && value !== null) {
@@ -170,7 +273,7 @@ export class MongoPostulationRepository implements PostulationRepository {
         {
           fields: cleanedFields
         }
-      ])
+      ], { typecast: true })
 
       if (userId && user) {
         await User.findByIdAndUpdate(userId, { $push: { postulations: postulation.code } }, { new: true })
