@@ -22,7 +22,7 @@ const formLimiter = rateLimit({
 })
 
 const contactUsRoute = Router()
-const contactTableId = process.env.AIRTABLE_CONTACT_TABLE_ID ?? ''
+const contactTableId = process.env.AIRTABLE_CONTACT_TABLE_ID ?? 'tblowuU307OXjVtXf'
 
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
 contactUsRoute.post('/', formLimiter, async (req, res): Promise<any> => {
