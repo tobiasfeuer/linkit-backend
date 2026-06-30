@@ -2,7 +2,7 @@ import axios from "axios"
 
 const AZURE_TRANSLATOR_KEY = process.env.AZURE_TRANSLATOR_KEY
 const AZURE_TRANSLATOR_ENDPOINT = process.env.AZURE_ENDPOINT
-const AZURE_TRANSLATOR_REGION = process.env.AZURE_TRANSLATOR_REGION || "Global"
+const AZURE_TRANSLATOR_REGION = process.env.AZURE_TRANSLATOR_REGION ?? process.env.AZURE_REGION
 
 export async function testAzureConfiguration(): Promise<{ success: boolean; message: string; details?: any }> {
   try {
@@ -15,6 +15,13 @@ export async function testAzureConfiguration(): Promise<{ success: boolean; mess
       return {
         success: false,
         message: "Variables de entorno AZURE_TRANSLATOR_KEY y AZURE_ENDPOINT no están configuradas"
+      }
+    }
+
+    if (!AZURE_TRANSLATOR_REGION) {
+      return {
+        success: false,
+        message: "Variable AZURE_TRANSLATOR_REGION no está configurada (ej. westeurope)"
       }
     }
 

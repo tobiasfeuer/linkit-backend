@@ -14,6 +14,7 @@ import resourcesRoute from './resources/infrastructure/routes/resources.routes'
 import { authValidator, langValidator } from './middlewares'
 import postulationRoute from './postulations/infrastructure/routes/postulation.route'
 import recruitersRoute from './recruiters/infrastructure/routes/recruiters.routes'
+import driveRoute from './integrations/infrastructure/routes/drive.routes'
 import { generateSitemap } from './Utils/sitemap'
 import { generateJdUrlsExcel } from './Utils/jds-urls'
 import morgan from 'morgan'
@@ -23,7 +24,7 @@ app.use(cors(
   {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept', 'x-api-key', 'X-Api-Key']
   }
 ))
 
@@ -37,6 +38,7 @@ app.use(langValidator)
 app.use('/resources', resourcesRoute)
 app.use('/postulations', postulationRoute)
 app.use('/recruiters', recruitersRoute)
+app.use('/drive', driveRoute)
 app.use('/auth', authRoute)
 app.use('/posts', postRoute)
 

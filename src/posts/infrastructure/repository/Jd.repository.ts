@@ -5,7 +5,7 @@ import { validateJD } from '../../../errors/validation'
 import { ServerError, UncatchedError } from '../../../errors/errors'
 import CombinedFilters from '../../../users/infrastructure/helpers/CombinedFilters'
 import { objectIDValidator } from '../../../users/infrastructure/helpers/validateObjectID'
-import { translateJDToEnglish } from '../helpers/AzureJDTranslator'
+import { translateJDToEnglish, isValidEnglishTranslation } from '../helpers/AzureJDTranslator'
 import Admin from '../../../users/infrastructure/schema/Admin'
 
 export class MongoJdRepository implements JdRepository {
@@ -47,22 +47,25 @@ export class MongoJdRepository implements JdRepository {
 
           // Si se solicita inglés, verificar y generar traducción si es necesario
           if (lang === 'en') {
-            // Verificar si ya existe traducción completa y válida
-            const hasValidTranslation = jd.en && 
-              jd.en.title && 
-              jd.en.description && 
-              jd.en.description !== jd.description
-            
+            const hasValidTranslation = isValidEnglishTranslation(
+              jd.toObject() as JdEntity,
+              (jd.en ?? {}) as Partial<JdEntity>
+            )
+
             if (hasValidTranslation) {
-              console.log("Traducción válida ya existe en BD, devolviendo...", jd.en?.title)
+              console.log('Traducción válida ya existe en BD, devolviendo...', jd.en?.title)
             } else {
-              console.log("Traduciendo con Azure y guardando en BD...")
-              // Traducir con Azure
+              console.log('Traduciendo con Azure...')
               const jdObject = jd.toObject() as JdEntity
               const translated = await translateJDToEnglish(jdObject)
-              // Guardar la traducción en MongoDB
-              jd.en = translated as any
-              await jd.save()
+
+              if (translated && isValidEnglishTranslation(jdObject, translated)) {
+                jd.en = translated as any
+                await jd.save()
+                console.log('Traducción guardada en BD:', translated.title)
+              } else {
+                console.warn('Traducción no disponible; no se persiste en.en inválido')
+              }
             }
           }
 

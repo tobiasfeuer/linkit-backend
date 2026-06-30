@@ -46,3 +46,4 @@ Thumbs.db
 # (Ignora cualquier .json que no esté explícitamente permitido arriba)
 # =========================
 *.json
+src/**/*.js

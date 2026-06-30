@@ -2,8 +2,10 @@ import { type NextFunction, type Request, type Response } from 'express'
 import { type customError } from './errors/errors'
 
 export const authValidator = (req: Request, res: Response, next: NextFunction): Response<any, Record<string, any>> | undefined => {
+  console.log(`🔐 authValidator: ${req.method} ${req.originalUrl}`)
   const userId = req.headers.authorization?.split(' ')[1]
   if (!userId) {
+    console.log(`🔐 authValidator: sin Authorization Bearer → 401 (${req.originalUrl})`)
     const error: customError = { en: 'Unauthorized, no auth header found', es: 'No autorizado, no se encontro valor de autorizacion en la peticion' }
     return res.status(401).json(error[(req as any).lang as keyof customError])
   }

@@ -27,15 +27,17 @@ export const generateJdUrlsExcel = async (req: Request, res: Response) => {
 
     const data = jobs.map(job => ({
       'Job Code': job.code,
-      'JD URL': job.title ? 
-        `${BASE_URL}/soyTalento/Joboffer/${job.code}/${generateSlug(job.title)}` : 
-        `${BASE_URL}/soyTalento/Joboffer/${job.code}`
+      'Short JD URL': `${BASE_URL}/j/${job.code}`,
+      'WhatsApp Share URL': `${BASE_URL}/j/${job.code}/WhatsApp`,
+      'JD URL (SEO)': job.title
+        ? `${BASE_URL}/soyTalento/Joboffer/${job.code}/${generateSlug(job.title)}`
+        : `${BASE_URL}/soyTalento/Joboffer/${job.code}`
     }));
 
     const workbook = XLSX.utils.book_new();
-    
+
     const worksheet = XLSX.utils.json_to_sheet(data, {
-      header: ['Job Code', 'JD URL']
+      header: ['Job Code', 'Short JD URL', 'WhatsApp Share URL', 'JD URL (SEO)']
     });
 
     const headerStyle = {
@@ -45,8 +47,10 @@ export const generateJdUrlsExcel = async (req: Request, res: Response) => {
     };
 
     const colWidths = [
-      { wch: 15 }, 
-      { wch: 100 }  
+      { wch: 15 },
+      { wch: 45 },
+      { wch: 50 },
+      { wch: 100 }
     ];
     worksheet['!cols'] = colWidths;
 
